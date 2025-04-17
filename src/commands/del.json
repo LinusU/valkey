@@ -6,6 +6,12 @@
         "since": "1.0.0",
         "arity": -2,
         "function": "delCommand",
+        "history": [
+            [
+                "8.2.0",
+                "Added the `IFEQ` option."
+            ]
+        ],
         "command_flags": [
             "WRITE"
         ],
@@ -18,8 +24,10 @@
         ],
         "key_specs": [
             {
+                "notes": "ACCESS due to the optional `IFEQ` argument",
                 "flags": [
                     "RM",
+                    "ACCESS",
                     "DELETE"
                 ],
                 "begin_search": {
@@ -42,6 +50,20 @@
             "minimum": 0
         },
         "arguments": [
+            {
+                "name": "comparison-value",
+                "type": "string",
+                "token": "IFEQ",
+                "since": "8.2.0",
+                "summary": "Deletes the key only if the current value matches the specified comparison value.",
+                "arguments": [
+                    {
+                        "name": "comparison-value",
+                        "type": "string",
+                        "summary": "The value to compare with the current key's value before deleting."
+                    }
+                ]
+            },
             {
                 "name": "key",
                 "type": "key",

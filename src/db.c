@@ -34,6 +34,7 @@
 #include "functions.h"
 #include "io_threads.h"
 #include "module.h"
+#include "t_string.h"
 
 #include <signal.h>
 #include <ctype.h>
@@ -819,11 +820,28 @@ void flushallCommand(client *c) {
 }
 
 /* This command implements DEL and UNLINK. */
-void delGenericCommand(client *c, int lazy) {
+void delGenericCommand(client *c, int lazy, int flags, robj *comparison) {
     int numdel = 0, j;
 
     for (j = 1; j < c->argc; j++) {
         if (expireIfNeeded(c->db, c->argv[j], NULL, 0) == KEY_DELETED) continue;
+
+        if (flags & OBJ_IFEQ) {
+            robj *existing_value = lookupKeyWrite(c->db, c->argv[j]);
+
+            if (existing_value == NULL) {
+                continue;
+            }
+
+            if (checkType(c, existing_value, OBJ_STRING)) {
+                continue;
+            }
+
+            if (compareStringObjects(existing_value, comparison) != 0) {
+                continue;
+            }
+        }
+
         int deleted = lazy ? dbAsyncDelete(c->db, c->argv[j]) : dbSyncDelete(c->db, c->argv[j]);
         if (deleted) {
             signalModifiedKey(c, c->db, c->argv[j]);
@@ -836,11 +854,18 @@ void delGenericCommand(client *c, int lazy) {
 }
 
 void delCommand(client *c) {
-    delGenericCommand(c, server.lazyfree_lazy_user_del);
+    robj *comparison = NULL;
+    int flags = OBJ_NO_FLAGS;
+
+    if (parseExtendedStringArgumentsOrReply(c, &flags, NULL, NULL, &comparison, COMMAND_DEL) != C_OK) {
+        return;
+    }
+
+    delGenericCommand(c, server.lazyfree_lazy_user_del, flags, comparison);
 }
 
 void unlinkCommand(client *c) {
-    delGenericCommand(c, 1);
+    delGenericCommand(c, 1, OBJ_NO_FLAGS, NULL);
 }
 
 /* EXISTS key1 key2 ... key_N.

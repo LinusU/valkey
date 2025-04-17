@@ -33,6 +33,7 @@
  */
 
 #include "server.h"
+#include "t_string.h"
 #include <math.h> /* isnan(), isinf() */
 
 /* Forward declarations */
@@ -71,20 +72,6 @@ static int checkStringLength(client *c, long long size, long long append) {
  * If ok_reply is NULL "+OK" is used.
  * If abort_reply is NULL, "$-1" is used. */
 
-#define OBJ_NO_FLAGS 0
-#define OBJ_SET_NX (1 << 0)   /* Set if key not exists. */
-#define OBJ_SET_XX (1 << 1)   /* Set if key exists. */
-#define OBJ_EX (1 << 2)       /* Set if time in seconds is given */
-#define OBJ_PX (1 << 3)       /* Set if time in ms in given */
-#define OBJ_KEEPTTL (1 << 4)  /* Set and keep the ttl */
-#define OBJ_SET_GET (1 << 5)  /* Set if want to get key before set */
-#define OBJ_EXAT (1 << 6)     /* Set if timestamp in second is given */
-#define OBJ_PXAT (1 << 7)     /* Set if timestamp in ms is given */
-#define OBJ_PERSIST (1 << 8)  /* Set if we need to remove the ttl */
-#define OBJ_SET_IFEQ (1 << 9) /* Set if we need compare and set */
-#define OBJ_ARGV3 (1 << 10)   /* Set if the value is at argv[3]; otherwise it's \
-                               * at argv[2]. */
-
 /* Forward declaration */
 static int getExpireMillisecondsOrReply(client *c, robj *expire, int flags, int unit, long long *milliseconds);
 
@@ -113,7 +100,7 @@ void setGenericCommand(client *c,
     found = existing_value != NULL;
 
     /* Handle the IFEQ conditional check */
-    if (flags & OBJ_SET_IFEQ && found) {
+    if (flags & OBJ_IFEQ && found) {
         if (!(flags & OBJ_SET_GET) && checkType(c, existing_value, OBJ_STRING)) {
             return;
         }
@@ -124,7 +111,7 @@ void setGenericCommand(client *c,
             }
             return;
         }
-    } else if (flags & OBJ_SET_IFEQ && !found) {
+    } else if (flags & OBJ_IFEQ && !found) {
         if (!(flags & OBJ_SET_GET)) {
             addReply(c, abort_reply ? abort_reply : shared.null[c->resp]);
         }
@@ -236,14 +223,13 @@ static int getExpireMillisecondsOrReply(client *c, robj *expire, int flags, int 
     return C_OK;
 }
 
-#define COMMAND_GET 0
-#define COMMAND_SET 1
 /*
  * The parseExtendedStringArgumentsOrReply() function performs the common validation for extended
  * string arguments used in SET and GET command.
  *
  * Get specific commands - PERSIST/DEL
  * Set specific commands - XX/NX/GET/IFEQ
+ * Del specific commands - IFEQ
  * Common commands - EX/EXAT/PX/PXAT/KEEPTTL
  *
  * Function takes pointers to client, flags, unit, pointer to pointer of expire obj if needed
@@ -255,7 +241,7 @@ static int getExpireMillisecondsOrReply(client *c, robj *expire, int flags, int 
  * EX/EXAT/PX/PXAT arguments. Unit is updated to millisecond if PX/PXAT is set.
  */
 int parseExtendedStringArgumentsOrReply(client *c, int *flags, int *unit, robj **expire, robj **compare_val, int command_type) {
-    int j = command_type == COMMAND_GET ? 2 : 3;
+    int j = command_type == COMMAND_SET ? 3 : 2;
     for (; j < c->argc; j++) {
         char *opt = c->argv[j]->ptr;
         robj *next = (j == c->argc - 1) ? NULL : c->argv[j + 1];
@@ -263,21 +249,21 @@ int parseExtendedStringArgumentsOrReply(client *c, int *flags, int *unit, robj *
         /* clang-format off */
         if ((opt[0] == 'n' || opt[0] == 'N') &&
             (opt[1] == 'x' || opt[1] == 'X') && opt[2] == '\0' &&
-            !(*flags & OBJ_SET_XX || *flags & OBJ_SET_IFEQ) && (command_type == COMMAND_SET))
+            !(*flags & OBJ_SET_XX || *flags & OBJ_IFEQ) && (command_type == COMMAND_SET))
         {
             *flags |= OBJ_SET_NX;
         } else if ((opt[0] == 'x' || opt[0] == 'X') &&
                    (opt[1] == 'x' || opt[1] == 'X') && opt[2] == '\0' &&
-                   !(*flags & OBJ_SET_NX || *flags & OBJ_SET_IFEQ) && (command_type == COMMAND_SET))
+                   !(*flags & OBJ_SET_NX || *flags & OBJ_IFEQ) && (command_type == COMMAND_SET))
         {
             *flags |= OBJ_SET_XX;
         } else if ((opt[0] == 'i' || opt[0] == 'I') &&
             (opt[1] == 'f' || opt[1] == 'F') &&
             (opt[2] == 'e' || opt[2] == 'E') &&
             (opt[3] == 'q' || opt[3] == 'Q') && opt[4] == '\0' &&
-            next && !(*flags & OBJ_SET_NX || *flags & OBJ_SET_XX || *flags & OBJ_SET_IFEQ) && (command_type == COMMAND_SET))
+            next && !(*flags & OBJ_SET_NX || *flags & OBJ_SET_XX || *flags & OBJ_IFEQ) && ((command_type == COMMAND_SET) || (command_type == COMMAND_DEL)))
         {
-            *flags |= OBJ_SET_IFEQ;
+            *flags |= OBJ_IFEQ;
             *compare_val = next;
             j++;
         } else if ((opt[0] == 'g' || opt[0] == 'G') &&
