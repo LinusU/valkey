@@ -1929,10 +1929,22 @@ keySpec DEL_Keyspecs[1] = {
 };
 #endif
 
+/* DEL arguments ifeq argument table */
+struct COMMAND_ARG DEL_arguments_ifeq_Subargs[] = {
+{MAKE_ARG("key",ARG_TYPE_KEY,0,NULL,NULL,NULL,CMD_ARG_NONE,0,NULL)},
+{MAKE_ARG("ifeq",ARG_TYPE_STRING,-1,"IFEQ",NULL,"8.2.0",CMD_ARG_NONE,0,NULL)},
+{MAKE_ARG("comparison-value",ARG_TYPE_STRING,-1,NULL,"The value to compare with the current key's value before deleting.",NULL,CMD_ARG_NONE,0,NULL)},
+};
+
+/* DEL arguments argument table */
+struct COMMAND_ARG DEL_arguments_Subargs[] = {
+{MAKE_ARG("key",ARG_TYPE_KEY,0,NULL,NULL,NULL,CMD_ARG_MULTIPLE,0,NULL)},
+{MAKE_ARG("ifeq",ARG_TYPE_BLOCK,-1,NULL,NULL,NULL,CMD_ARG_NONE,3,NULL),.subargs=DEL_arguments_ifeq_Subargs},
+};
+
 /* DEL argument table */
 struct COMMAND_ARG DEL_Args[] = {
-{MAKE_ARG("comparison-value",ARG_TYPE_STRING,-1,"IFEQ","Deletes the key only if the current value matches the specified comparison value.","8.2.0",CMD_ARG_NONE,0,NULL)},
-{MAKE_ARG("key",ARG_TYPE_KEY,0,NULL,NULL,NULL,CMD_ARG_MULTIPLE,0,NULL)},
+{MAKE_ARG("arguments",ARG_TYPE_ONEOF,-1,NULL,NULL,NULL,CMD_ARG_NONE,2,NULL),.subargs=DEL_arguments_Subargs},
 };
 
 /********** DUMP ********************/
@@ -11108,7 +11120,7 @@ struct COMMAND_STRUCT serverCommandTable[] = {
 {MAKE_CMD("select","Changes the selected database.","O(1)","1.0.0",CMD_DOC_NONE,NULL,NULL,"connection",COMMAND_GROUP_CONNECTION,SELECT_History,0,SELECT_Tips,0,selectCommand,2,CMD_LOADING|CMD_STALE|CMD_FAST,ACL_CATEGORY_CONNECTION,SELECT_Keyspecs,0,NULL,1),.args=SELECT_Args},
 /* generic */
 {MAKE_CMD("copy","Copies the value of a key to a new key.","O(N) worst case for collections, where N is the number of nested items. O(1) for string values.","6.2.0",CMD_DOC_NONE,NULL,NULL,"generic",COMMAND_GROUP_GENERIC,COPY_History,0,COPY_Tips,0,copyCommand,-3,CMD_WRITE|CMD_DENYOOM,ACL_CATEGORY_KEYSPACE,COPY_Keyspecs,2,NULL,4),.args=COPY_Args},
-{MAKE_CMD("del","Deletes one or more keys.","O(N) where N is the number of keys that will be removed. When a key to remove holds a value other than a string, the individual complexity for this key is O(M) where M is the number of elements in the list, set, sorted set or hash. Removing a single key that holds a string value is O(1).","1.0.0",CMD_DOC_NONE,NULL,NULL,"generic",COMMAND_GROUP_GENERIC,DEL_History,1,DEL_Tips,2,delCommand,-2,CMD_WRITE,ACL_CATEGORY_KEYSPACE,DEL_Keyspecs,1,NULL,2),.args=DEL_Args},
+{MAKE_CMD("del","Deletes one or more keys.","O(N) where N is the number of keys that will be removed. When a key to remove holds a value other than a string, the individual complexity for this key is O(M) where M is the number of elements in the list, set, sorted set or hash. Removing a single key that holds a string value is O(1).","1.0.0",CMD_DOC_NONE,NULL,NULL,"generic",COMMAND_GROUP_GENERIC,DEL_History,1,DEL_Tips,2,delCommand,-2,CMD_WRITE,ACL_CATEGORY_KEYSPACE,DEL_Keyspecs,1,NULL,1),.args=DEL_Args},
 {MAKE_CMD("dump","Returns a serialized representation of the value stored at a key.","O(1) to access the key and additional O(N*M) to serialize it, where N is the number of objects composing the value and M their average size. For small string values the time complexity is thus O(1)+O(1*M) where M is small, so simply O(1).","2.6.0",CMD_DOC_NONE,NULL,NULL,"generic",COMMAND_GROUP_GENERIC,DUMP_History,0,DUMP_Tips,1,dumpCommand,2,CMD_READONLY,ACL_CATEGORY_KEYSPACE,DUMP_Keyspecs,1,NULL,1),.args=DUMP_Args},
 {MAKE_CMD("exists","Determines whether one or more keys exist.","O(N) where N is the number of keys to check.","1.0.0",CMD_DOC_NONE,NULL,NULL,"generic",COMMAND_GROUP_GENERIC,EXISTS_History,1,EXISTS_Tips,2,existsCommand,-2,CMD_READONLY|CMD_FAST,ACL_CATEGORY_KEYSPACE,EXISTS_Keyspecs,1,NULL,1),.args=EXISTS_Args},
 {MAKE_CMD("expire","Sets the expiration time of a key in seconds.","O(1)","1.0.0",CMD_DOC_NONE,NULL,NULL,"generic",COMMAND_GROUP_GENERIC,EXPIRE_History,1,EXPIRE_Tips,0,expireCommand,-3,CMD_WRITE|CMD_FAST,ACL_CATEGORY_KEYSPACE,EXPIRE_Keyspecs,1,NULL,3),.args=EXPIRE_Args},

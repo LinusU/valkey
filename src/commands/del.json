@@ -51,24 +51,38 @@
         },
         "arguments": [
             {
-                "name": "comparison-value",
-                "type": "string",
-                "token": "IFEQ",
-                "since": "8.2.0",
-                "summary": "Deletes the key only if the current value matches the specified comparison value.",
-                "arguments": [
-                    {
-                        "name": "comparison-value",
-                        "type": "string",
-                        "summary": "The value to compare with the current key's value before deleting."
-                    }
-                ]
-            },
-            {
-                "name": "key",
-                "type": "key",
-                "key_spec_index": 0,
-                "multiple": true
+              "name": "arguments",
+              "type": "oneof",
+              "arguments": [
+                  {
+                      "name": "key",
+                      "type": "key",
+                      "key_spec_index": 0,
+                      "multiple": true
+                  },
+                  {
+                    "name": "ifeq",
+                    "type": "block",
+                    "arguments": [
+                        {
+                            "name": "key",
+                            "type": "key",
+                            "key_spec_index": 0
+                        },
+                        {
+                            "name": "ifeq",
+                            "type": "string",
+                            "token": "IFEQ",
+                            "since": "8.2.0"
+                        },
+                        {
+                            "name": "comparison-value",
+                            "type": "string",
+                            "summary": "The value to compare with the current key's value before deleting."
+                        }
+                    ]
+                  }
+              ]
             }
         ]
     }
